@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS - allow your frontend and tools. For dev you can keep '*',
 // but consider restricting to your domain in production.
-app.use(cors({ origin: "*", credentials: true }));
+app.use(cors());
 
 const PORT = process.env.PORT || 9000;
 
@@ -45,7 +45,7 @@ app.get("/health-check", (req, res) => res.send("Server is healthy ✅"));
 // -----------------------------
 // Employee Register
 // -----------------------------
-app.post("/register", async (req, res) => {
+app.post("https://bcclweb.onrender.com/register", async (req, res) => {
   try {
     const {
       employeeFirstName,
@@ -103,7 +103,7 @@ app.post("/register", async (req, res) => {
 // -----------------------------
 // Employee Login
 // -----------------------------
-app.post("/login", async (req, res) => {
+app.post("https://bcclweb.onrender.com/login", async (req, res) => {
   try {
     const { employeeCode, password } = req.body;
 
@@ -137,7 +137,7 @@ app.post("/login", async (req, res) => {
 // -----------------------------
 // Doctor login
 // -----------------------------
-app.post("/doctor-login", async (req, res) => {
+app.post("https://bcclweb.onrender.com/doctor-login", async (req, res) => {
   try {
     const { doctorCode, password } = req.body;
 
@@ -162,7 +162,7 @@ app.post("/doctor-login", async (req, res) => {
 // -----------------------------
 // Get All Doctors
 // -----------------------------
-app.get("/api/doctors", async (req, res) => {
+app.get("https://bcclweb.onrender.com/api/doctors", async (req, res) => {
   try {
     const doctors = await Doctor.find({});
     res.status(200).json({ success: true, doctors });
@@ -175,7 +175,7 @@ app.get("/api/doctors", async (req, res) => {
 // -----------------------------
 // Appointment Create
 // -----------------------------
-app.post("/api/appointments/create", async (req, res) => {
+app.post("https://bcclweb.onrender.com/api/appointments/create", async (req, res) => {
   try {
     const {
       employeeCode,
@@ -235,7 +235,7 @@ app.post("/api/appointments/create", async (req, res) => {
 // -----------------------------
 // Fetching Appointment (for Employee Dashboard)
 // -----------------------------
-app.get("/api/appointments", async (req, res) => {
+app.get("https://bcclweb.onrender.com/api/appointments", async (req, res) => {
   try {
     const { employeeCode, patientName } = req.query;
 
@@ -258,7 +258,7 @@ app.get("/api/appointments", async (req, res) => {
 // -----------------------------
 // Fetching Appointments for a specific Doctor
 // -----------------------------
-app.get("/api/doctor/appointments/:doctorCode", async (req, res) => {
+app.get("https://bcclweb.onrender.com/api/doctor/appointments/:doctorCode", async (req, res) => {
   try {
     const { doctorCode } = req.params;
     if (!doctorCode) return res.status(400).json({ success: false, message: "Doctor code is required." });
@@ -275,7 +275,7 @@ app.get("/api/doctor/appointments/:doctorCode", async (req, res) => {
 // -----------------------------
 // Update Appointment Status and/or Medical Report
 // -----------------------------
-app.patch("/api/appointments/:id/update", async (req, res) => {
+app.patch("https://bcclweb.onrender.com/api/appointments/:id/update", async (req, res) => {
   try {
     const { id } = req.params;
     const { status, medicalReport } = req.body;
@@ -302,7 +302,7 @@ app.patch("/api/appointments/:id/update", async (req, res) => {
 // -----------------------------
 // Delete appointment (only if cancelled)
 // -----------------------------
-app.delete("/api/appointments/:id", async (req, res) => {
+app.delete("https://bcclweb.onrender.com/api/appointments/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
