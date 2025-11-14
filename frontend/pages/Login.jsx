@@ -20,7 +20,7 @@ const Login = () => {
       const response = await fetch("https://bcclweb.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeCode: employeeId.toString(), password: employeePassword }),
+        body: JSON.stringify({ employeeCode: employeeId, password: employeePassword }),
       });
       const result = await response.json();
       if (response.ok) {

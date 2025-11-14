@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 
 const employeeSchema = new mongoose.Schema({
   employeeCode: {
-    type: String,
+    type: Number,
     required: true,
     unique: true,
   },
