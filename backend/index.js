@@ -12,7 +12,7 @@ import { seedDoctors } from "./seed/doctors.seed.js";
 configDotenv();
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: ["https://bcclwebsite2.vercel.app", "https://bcclweb.onrender.com"], optionsSuccessStatus: 200, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
