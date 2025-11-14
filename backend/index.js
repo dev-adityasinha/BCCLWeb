@@ -113,7 +113,10 @@ app.post("/register", async (req, res) => {
 // ----------------------
 app.post("/login", async (req, res) => {
   try {
-    const { employeeCode, password } = req.body;
+    let { employeeCode, password } = req.body;
+
+    // Convert incoming employeeCode (string) → number
+    employeeCode = Number(employeeCode);
 
     if (!employeeCode || !password) {
       return res.status(400).json({ success: false, message: "Employee code and password are required" });

@@ -16,7 +16,7 @@ const EmployeeLoginForm = ({
         <input
           value={employeeId}
           onChange={(e) => setEmployeeId(e.target.value)}
-          type="text"
+          type="number"
           id="employee_id"
           name="employee_id"
           className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
