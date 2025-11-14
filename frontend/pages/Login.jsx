@@ -17,7 +17,7 @@ const Login = () => {
     e.preventDefault();
     setLoginStatus("loading");
     try {
-      const response = await fetch("http://localhost:9000/login", {
+      const response = await fetch("https://bcclweb.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeCode: employeeId, password: employeePassword }),

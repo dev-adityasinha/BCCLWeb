@@ -101,7 +101,7 @@ const DoctorDashboard = () => {
   const handleStatusUpdate = async (appointmentId, newStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:9000/api/appointments/${appointmentId}/update`,
+        `https://bcclweb.onrender.com/api/appointments/${appointmentId}/update`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
