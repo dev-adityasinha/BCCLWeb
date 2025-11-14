@@ -80,7 +80,7 @@ app.post("/register", async (req, res) => {
 });
 
 // Employee Login
-app.post("/login", async (req, res) => {
+app.post("https://bcclweb.onrender.com/login", async (req, res) => {
   const { employeeCode, password } = req.body;
 
   if (!employeeCode || !password) {
@@ -117,7 +117,7 @@ app.post("/login", async (req, res) => {
 });
 
 // Doctor login
-app.post("/doctor-login", async (req, res) => {
+app.post("https://bcclweb.onrender.com/doctor-login", async (req, res) => {
   const { doctorCode, password } = req.body;
 
   if (!doctorCode || !password) {
@@ -147,7 +147,7 @@ app.post("/doctor-login", async (req, res) => {
 });
 
 // Get All Doctors
-app.get("/api/doctors", async (req, res) => {
+app.get("https://bcclweb.onrender.com/api/doctors", async (req, res) => {
   try {
     const doctors = await Doctor.find({});
     res.status(200).json({ success: true, doctors });
@@ -158,7 +158,7 @@ app.get("/api/doctors", async (req, res) => {
 });
 
 // Appointment Create
-app.post("/api/appointments/create", async (req, res) => {
+app.post("https://bcclweb.onrender.com/api/appointments/create", async (req, res) => {
   const {
     employeeCode,
     patientName,
@@ -226,7 +226,7 @@ app.post("/api/appointments/create", async (req, res) => {
 });
 
 // Fetching Appointment (for Employee Dashboard)
-app.get("/api/appointments", async (req, res) => {
+app.get("https://bcclweb.onrender.com/api/appointments", async (req, res) => {
   const { employeeCode, patientName } = req.query;
 
   if (!employeeCode || !patientName) {
@@ -247,7 +247,7 @@ app.get("/api/appointments", async (req, res) => {
 });
 
 // Fetching Appointments for a specific Doctor
-app.get("/api/doctor/appointments/:doctorCode", async (req, res) => {
+app.get("https://bcclweb.onrender.com/api/doctor/appointments/:doctorCode", async (req, res) => {
   const { doctorCode } = req.params;
 
   if (!doctorCode) {
@@ -266,7 +266,7 @@ app.get("/api/doctor/appointments/:doctorCode", async (req, res) => {
 });
 
 // Update Appointment Status and/or Medical Report
-app.patch("/api/appointments/:id/update", async (req, res) => {
+app.patch("https://bcclweb.onrender.com/api/appointments/:id/update", async (req, res) => {
   const { id } = req.params;
   const { status, medicalReport } = req.body; // Expect medicalReport
 
@@ -297,7 +297,7 @@ app.patch("/api/appointments/:id/update", async (req, res) => {
 });
 
 // Delete appointment (only if cancelled)
-app.delete("/api/appointments/:id", async (req, res) => {
+app.delete("https://bcclweb.onrender.com/api/appointments/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
