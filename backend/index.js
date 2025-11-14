@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
+import { configDotenv } from "dotenv";
 import bcrypt from "bcryptjs";
 
 import { Appointment } from "./models/Appointment.model.js";
@@ -9,82 +9,58 @@ import { Doctor } from "./models/Doctor.Model.js";
 import { Employee } from "./models/Employee.Model.js";
 import { seedDoctors } from "./seed/doctors.seed.js";
 
-dotenv.config();
-
+configDotenv();
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({
-  origin: "*",
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  allowedHeaders: "Content-Type, Authorization",
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
-
-app.options("*", cors());
-
-
 const PORT = process.env.PORT || 9000;
 
-// ----------------------
-// Mongo Connection
-// ----------------------
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(async () => {
     console.log("✅ MongoDB connected");
-    try {
-      await seedDoctors();
-    } catch (err) {
-      console.warn("Non-fatal seed error:", err.message);
-    }
+    await seedDoctors();
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Health Check
-app.get("/health-check", (req, res) => res.send("Server is healthy ✅"));
+app.get("/health-check", (req, res) => {
+  res.send("Server is healthy ✅");
+});
 
-// ----------------------
 // Employee Register
-// ----------------------
 app.post("/register", async (req, res) => {
+  const {
+    employeeFirstName,
+    employeeLastName,
+    employeeGender,
+    employeeCode,
+    employeePhoneNumber,
+    employeeDOB,
+    employeePassword,
+    dependents = [],
+  } = req.body;
+
+  if (
+    !employeeFirstName ||
+    !employeeLastName ||
+    !employeeGender ||
+    !employeeCode ||
+    !employeePhoneNumber ||
+    !employeePassword ||
+    !employeeDOB
+  ) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  const existing = await Employee.findOne({
+    $or: [{ employeeCode }, { employeePhoneNumber }],
+  });
+  if (existing) return res.status(409).json({ error: "Employee already exists" });
+
   try {
-    const {
-      employeeFirstName,
-      employeeLastName,
-      employeeGender,
-      employeeCode,
-      employeePhoneNumber,
-      employeeDOB,
-      employeePassword,
-      dependents = [],
-    } = req.body;
-
-    if (
-      !employeeFirstName ||
-      !employeeLastName ||
-      !employeeGender ||
-      !employeeCode ||
-      !employeePhoneNumber ||
-      !employeePassword ||
-      !employeeDOB
-    ) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    const existing = await Employee.findOne({
-      $or: [{ employeeCode }, { employeePhoneNumber }],
-    });
-    if (existing)
-      return res.status(409).json({ error: "Employee already exists" });
-
-    const hashed = await bcrypt.hash(employeePassword, 10);
-
     const newEmployee = new Employee({
       employeeFirstName,
       employeeLastName,
@@ -92,126 +68,134 @@ app.post("/register", async (req, res) => {
       employeeCode,
       employeePhoneNumber,
       employeeDOB,
-      password: hashed,
+      password: employeePassword,
       dependents,
     });
-
     await newEmployee.save();
-
-    const employeeResponse = { ...newEmployee.toObject() };
-    delete employeeResponse.password;
-
-    res.status(201).json({ message: "Employee registered", employee: employeeResponse });
+    res.status(201).json({ message: "Employee registered", employee: newEmployee });
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// ----------------------
 // Employee Login
-// ----------------------
 app.post("/login", async (req, res) => {
-  try {
-    const { employeeCode, password } = req.body;
+  const { employeeCode, password } = req.body;
 
-    if (!employeeCode || !password) {
-      return res.status(400).json({ success: false, message: "Employee code and password are required" });
+  if (!employeeCode || !password) {
+    return res.status(400).json({ success: false, message: "Employee code and password are required." });
+  }
+
+  try {
+    const employee = await Employee.findOne({ employeeCode });
+
+    if (!employee) {
+      return res.status(401).json({ success: false, message: "Invalid employee code or password." });
     }
 
-    const employee = await Employee.findOne({ employeeCode });
-    if (!employee)
-      return res.status(401).json({ success: false, message: "Invalid employee code or password" });
+    const isMatch = await employee.matchPassword(password);
 
-    const isMatch = await bcrypt.compare(password, employee.password);
-    if (!isMatch)
-      return res.status(401).json({ success: false, message: "Invalid employee code or password" });
-
-    const employeeResponse = {
-      employeeCode: employee.employeeCode,
-      employeeFirstName: employee.employeeFirstName,
-      employeeLastName: employee.employeeLastName,
-      employeeGender: employee.employeeGender,
-      employeePhoneNumber: employee.employeePhoneNumber,
-      employeeDOB: employee.employeeDOB,
-      dependents: employee.dependents,
-    };
-
-    res.status(200).json({ success: true, message: "Login successful", employee: employeeResponse });
+    if (isMatch) {
+      const employeeResponse = {
+        employeeCode: employee.employeeCode,
+        employeeFirstName: employee.employeeFirstName,
+        employeeLastName: employee.employeeLastName,
+        employeeGender: employee.employeeGender,
+        employeePhoneNumber: employee.employeePhoneNumber,
+        employeeDOB: employee.employeeDOB,
+        dependents: employee.dependents,
+      };
+      return res.status(200).json({ success: true, message: "Login successful", employee: employeeResponse });
+    } else {
+      return res.status(401).json({ success: false, message: "Invalid employee code or password." });
+    }
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error during login." });
   }
 });
 
-// ----------------------
-// Doctor Login
-// ----------------------
+// Doctor login
 app.post("/doctor-login", async (req, res) => {
+  const { doctorCode, password } = req.body;
+
+  if (!doctorCode || !password) {
+    return res.status(400).json({ success: false, message: "Doctor code and password are required." });
+  }
+
+  if (password !== process.env.DOCTOR_PASSWORD) {
+    return res.status(401).json({ success: false, message: "Invalid credentials." });
+  }
+
   try {
-    const { doctorCode, password } = req.body;
-
-    if (!doctorCode || !password)
-      return res.status(400).json({ success: false, message: "Doctor code and password are required" });
-
-    if (password !== process.env.DOCTOR_PASSWORD)
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
-
     const doctor = await Doctor.findOne({ doctorCode });
-    if (!doctor)
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
 
-    res.status(200).json({ success: true, message: "Doctor login successful", doctor });
+    if (!doctor) {
+      return res.status(401).json({ success: false, message: "Invalid credentials." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Doctor login successful",
+      doctor: doctor,
+    });
   } catch (error) {
     console.error("Doctor login error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error during doctor login." });
   }
 });
 
-// ----------------------
 // Get All Doctors
-// ----------------------
 app.get("/api/doctors", async (req, res) => {
   try {
     const doctors = await Doctor.find({});
     res.status(200).json({ success: true, doctors });
   } catch (error) {
-    console.error("Fetch doctors error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error fetching doctors:", error);
+    res.status(500).json({ success: false, message: "Server error fetching doctors." });
   }
 });
 
-// ----------------------
-// Create Appointment
-// ----------------------
+// Appointment Create
 app.post("/api/appointments/create", async (req, res) => {
+  const {
+    employeeCode,
+    patientName,
+    patientAge,
+    patientGender,
+    patientRelation,
+    patientPhone,
+    patientAddress,
+    appointmentDate,
+    appointmentTime,
+    doctorCode,
+    notes,
+  } = req.body;
+
+  if (
+    !employeeCode ||
+    !patientName ||
+    !appointmentDate ||
+    !appointmentTime ||
+    !doctorCode
+  ) {
+    return res.status(400).json({ success: false, message: "Missing required fields for appointment." });
+  }
+
   try {
-    const {
-      employeeCode,
-      patientName,
-      patientAge,
-      patientGender,
-      patientRelation,
-      patientPhone,
-      patientAddress,
-      appointmentDate,
-      appointmentTime,
-      doctorCode,
-      notes,
-    } = req.body;
+    const today = new Date(appointmentDate);
+    today.setUTCHours(0, 0, 0, 0);
 
-    if (!employeeCode || !patientName || !appointmentDate || !appointmentTime || !doctorCode) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
-    }
-
-    const dayStart = new Date(appointmentDate);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCDate(dayStart.getUTCDate() + 1);
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(today.getUTCDate() + 1);
 
     const lastAppointment = await Appointment.findOne({
       doctorCode,
-      appointmentDate: { $gte: dayStart, $lt: dayEnd },
+      appointmentDate: {
+        $gte: today,
+        $lt: tomorrow,
+      },
     })
       .sort({ tokenNumber: -1 })
       .limit(1);
@@ -234,62 +218,63 @@ app.post("/api/appointments/create", async (req, res) => {
     });
 
     await newAppointment.save();
-
-    res.status(201).json({ success: true, message: "Appointment created", appointment: newAppointment });
+    res.status(201).json({ success: true, message: "Appointment Created and Saved", appointment: newAppointment });
   } catch (error) {
-    console.error("Appointment save error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error saving appointment:", error);
+    res.status(500).json({ success: false, message: "Server Error saving appointment" });
   }
 });
 
-// ----------------------
-// Get Employee Appointments
-// ----------------------
+// Fetching Appointment (for Employee Dashboard)
 app.get("/api/appointments", async (req, res) => {
+  const { employeeCode, patientName } = req.query;
+
+  if (!employeeCode || !patientName) {
+    return res.status(400).json({ success: false, message: "Missing employeeCode or patientName" });
+  }
+
   try {
-    const { employeeCode, patientName } = req.query;
-
-    if (!employeeCode || !patientName)
-      return res.status(400).json({ success: false, message: "Missing employeeCode or patientName" });
-
     const appointments = await Appointment.find({
       employeeCode: String(employeeCode).trim(),
-      patientName: new RegExp(`^${patientName.trim()}$`, "i"),
+      patientName: new RegExp(`^${patientName.trim()}$`, 'i')
     }).sort({ appointmentDate: 1, appointmentTime: 1, tokenNumber: 1 });
 
     res.status(200).json({ success: true, appointments });
   } catch (error) {
-    console.error("Fetch appointments error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error fetching employee appointments:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// ----------------------
-// Get Doctor Appointments
-// ----------------------
+// Fetching Appointments for a specific Doctor
 app.get("/api/doctor/appointments/:doctorCode", async (req, res) => {
-  try {
-    const { doctorCode } = req.params;
+  const { doctorCode } = req.params;
 
-    const appointments = await Appointment.find({
-      doctorCode: String(doctorCode).trim(),
-    }).sort({ appointmentDate: 1, appointmentTime: 1, tokenNumber: 1 });
+  if (!doctorCode) {
+    return res.status(400).json({ success: false, message: "Doctor code is required." });
+  }
+
+  try {
+    const appointments = await Appointment.find({ doctorCode: String(doctorCode).trim() })
+      .sort({ appointmentDate: 1, appointmentTime: 1, tokenNumber: 1 });
 
     res.status(200).json({ success: true, appointments });
   } catch (error) {
-    console.error("Fetch doctor appts error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error fetching doctor's appointments:", error);
+    res.status(500).json({ success: false, message: "Server error fetching doctor's appointments." });
   }
 });
 
-// ----------------------
-// Update Appointment
-// ----------------------
+// Update Appointment Status and/or Medical Report
 app.patch("/api/appointments/:id/update", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, medicalReport } = req.body;
+  const { id } = req.params;
+  const { status, medicalReport } = req.body; // Expect medicalReport
 
+  if (!status && medicalReport === undefined) {
+    return res.status(400).json({ success: false, message: "No update data provided (status or medical report)." });
+  }
+
+  try {
     const updateFields = {};
     if (status) updateFields.status = status;
     if (medicalReport !== undefined) updateFields.medicalReport = medicalReport;
@@ -300,44 +285,42 @@ app.patch("/api/appointments/:id/update", async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    if (!appointment)
-      return res.status(404).json({ success: false, message: "Appointment not found" });
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found." });
+    }
 
-    res.json({ success: true, appointment });
+    res.json({ success: true, message: "Appointment updated successfully.", appointment });
   } catch (error) {
-    console.error("Update appt error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error updating appointment:", error);
+    res.status(500).json({ success: false, message: "Server error updating appointment." });
   }
 });
 
-// ----------------------
-// Delete Appointment
-// ----------------------
+// Delete appointment (only if cancelled)
 app.delete("/api/appointments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
+  try {
     const appointment = await Appointment.findById(id);
-    if (!appointment)
+
+    if (!appointment) {
       return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
 
     if (appointment.status !== "Cancelled") {
-      return res.status(403).json({ success: false, message: "Only cancelled appointments can be deleted" });
+      return res.status(403).json({
+        success: false,
+        message: "Only cancelled appointments can be deleted.",
+      });
     }
 
     await Appointment.findByIdAndDelete(id);
 
-    res.json({ success: true, message: "Appointment deleted" });
+    res.json({ success: true, message: "Cancelled appointment deleted successfully." });
   } catch (error) {
-    console.error("Delete appt error:", error);
+    console.error("Error deleting appointment:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// 404 fallback
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
-});
-
-// ----------------------
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
