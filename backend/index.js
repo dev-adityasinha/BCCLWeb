@@ -12,7 +12,7 @@ import { seedDoctors } from "./seed/doctors.seed.js";
 configDotenv();
 const app = express();
 
-app.use(cors({ origin: ["https://bcclwebsite2.vercel.app", "https://bcclweb.onrender.com"], optionsSuccessStatus: 200, credentials: true }));
+app.use(cors({ origin: ["https://bcclwebsite2-mqtw.vercel.app/", "https://bcclweb.onrender.com"], optionsSuccessStatus: 200, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -80,7 +80,7 @@ app.post("/register", async (req, res) => {
 });
 
 // Employee Login
-app.post("https://bcclweb.onrender.com/login", async (req, res) => {
+app.post("https://bcclwebsite2-mqtw.vercel.app/login", async (req, res) => {
   const { employeeCode, password } = req.body;
 
   if (!employeeCode || !password) {
@@ -117,7 +117,7 @@ app.post("https://bcclweb.onrender.com/login", async (req, res) => {
 });
 
 // Doctor login
-app.post("https://bcclweb.onrender.com/doctor-login", async (req, res) => {
+app.post("https://bcclwebsite2-mqtw.vercel.app/doctor-login", async (req, res) => {
   const { doctorCode, password } = req.body;
 
   if (!doctorCode || !password) {
@@ -147,7 +147,7 @@ app.post("https://bcclweb.onrender.com/doctor-login", async (req, res) => {
 });
 
 // Get All Doctors
-app.get("https://bcclweb.onrender.com/api/doctors", async (req, res) => {
+app.get("https://bcclwebsite2-mqtw.vercel.app/api/doctors", async (req, res) => {
   try {
     const doctors = await Doctor.find({});
     res.status(200).json({ success: true, doctors });
@@ -226,7 +226,7 @@ app.post("https://bcclweb.onrender.com/api/appointments/create", async (req, res
 });
 
 // Fetching Appointment (for Employee Dashboard)
-app.get("https://bcclweb.onrender.com/api/appointments", async (req, res) => {
+app.get("https://bcclwebsite2-mqtw.vercel.app/api/appointments", async (req, res) => {
   const { employeeCode, patientName } = req.query;
 
   if (!employeeCode || !patientName) {
@@ -247,7 +247,7 @@ app.get("https://bcclweb.onrender.com/api/appointments", async (req, res) => {
 });
 
 // Fetching Appointments for a specific Doctor
-app.get("https://bcclweb.onrender.com/api/doctor/appointments/:doctorCode", async (req, res) => {
+app.get("https://bcclwebsite2-mqtw.vercel.app/api/doctor/appointments/:doctorCode", async (req, res) => {
   const { doctorCode } = req.params;
 
   if (!doctorCode) {
@@ -266,7 +266,7 @@ app.get("https://bcclweb.onrender.com/api/doctor/appointments/:doctorCode", asyn
 });
 
 // Update Appointment Status and/or Medical Report
-app.patch("https://bcclweb.onrender.com/api/appointments/:id/update", async (req, res) => {
+app.patch("https://bcclwebsite2-mqtw.vercel.app/api/appointments/:id/update", async (req, res) => {
   const { id } = req.params;
   const { status, medicalReport } = req.body; // Expect medicalReport
 
@@ -297,7 +297,7 @@ app.patch("https://bcclweb.onrender.com/api/appointments/:id/update", async (req
 });
 
 // Delete appointment (only if cancelled)
-app.delete("https://bcclweb.onrender.com/api/appointments/:id", async (req, res) => {
+app.delete("https://bcclwebsite2-mqtw.vercel.app/api/appointments/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
