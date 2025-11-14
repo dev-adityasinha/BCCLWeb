@@ -9,20 +9,18 @@ import { Doctor } from "./models/Doctor.Model.js";
 import { Employee } from "./models/Employee.Model.js";
 import { seedDoctors } from "./seed/doctors.seed.js";
 
-// Load env
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// CORS - allow your frontend and tools. For dev you can keep '*',
-// but consider restricting to your domain in production.
 app.use(cors());
 
 const PORT = process.env.PORT || 9000;
 
-// Mongoose connection with sensible options and logging
+// ----------------------
+// Mongo Connection
+// ----------------------
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -30,22 +28,21 @@ mongoose
   })
   .then(async () => {
     console.log("✅ MongoDB connected");
-    // seed doctors only if collection empty (seedDoctors should be idempotent)
     try {
       await seedDoctors();
     } catch (err) {
-      console.warn("Seed doctors error (non-fatal):", err.message || err);
+      console.warn("Non-fatal seed error:", err.message);
     }
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Health
+// Health Check
 app.get("/health-check", (req, res) => res.send("Server is healthy ✅"));
 
-// -----------------------------
+// ----------------------
 // Employee Register
-// -----------------------------
-app.post("https://bcclweb.onrender.com/register", async (req, res) => {
+// ----------------------
+app.post("/register", async (req, res) => {
   try {
     const {
       employeeFirstName,
@@ -73,7 +70,8 @@ app.post("https://bcclweb.onrender.com/register", async (req, res) => {
     const existing = await Employee.findOne({
       $or: [{ employeeCode }, { employeePhoneNumber }],
     });
-    if (existing) return res.status(409).json({ error: "Employee already exists" });
+    if (existing)
+      return res.status(409).json({ error: "Employee already exists" });
 
     const hashed = await bcrypt.hash(employeePassword, 10);
 
@@ -89,7 +87,7 @@ app.post("https://bcclweb.onrender.com/register", async (req, res) => {
     });
 
     await newEmployee.save();
-    // strip sensitive data
+
     const employeeResponse = { ...newEmployee.toObject() };
     delete employeeResponse.password;
 
@@ -100,22 +98,24 @@ app.post("https://bcclweb.onrender.com/register", async (req, res) => {
   }
 });
 
-// -----------------------------
+// ----------------------
 // Employee Login
-// -----------------------------
-app.post("https://bcclweb.onrender.com/login", async (req, res) => {
+// ----------------------
+app.post("/login", async (req, res) => {
   try {
     const { employeeCode, password } = req.body;
 
     if (!employeeCode || !password) {
-      return res.status(400).json({ success: false, message: "Employee code and password are required." });
+      return res.status(400).json({ success: false, message: "Employee code and password are required" });
     }
 
     const employee = await Employee.findOne({ employeeCode });
-    if (!employee) return res.status(401).json({ success: false, message: "Invalid employee code or password." });
+    if (!employee)
+      return res.status(401).json({ success: false, message: "Invalid employee code or password" });
 
     const isMatch = await bcrypt.compare(password, employee.password);
-    if (!isMatch) return res.status(401).json({ success: false, message: "Invalid employee code or password." });
+    if (!isMatch)
+      return res.status(401).json({ success: false, message: "Invalid employee code or password" });
 
     const employeeResponse = {
       employeeCode: employee.employeeCode,
@@ -127,55 +127,54 @@ app.post("https://bcclweb.onrender.com/login", async (req, res) => {
       dependents: employee.dependents,
     };
 
-    return res.status(200).json({ success: true, message: "Login successful", employee: employeeResponse });
+    res.status(200).json({ success: true, message: "Login successful", employee: employeeResponse });
   } catch (err) {
     console.error("Login error:", err);
-    return res.status(500).json({ success: false, message: "Server error during login." });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// -----------------------------
-// Doctor login
-// -----------------------------
-app.post("https://bcclweb.onrender.com/doctor-login", async (req, res) => {
+// ----------------------
+// Doctor Login
+// ----------------------
+app.post("/doctor-login", async (req, res) => {
   try {
     const { doctorCode, password } = req.body;
 
-    if (!doctorCode || !password) {
-      return res.status(400).json({ success: false, message: "Doctor code and password are required." });
-    }
+    if (!doctorCode || !password)
+      return res.status(400).json({ success: false, message: "Doctor code and password are required" });
 
-    if (password !== process.env.DOCTOR_PASSWORD) {
-      return res.status(401).json({ success: false, message: "Invalid credentials." });
-    }
+    if (password !== process.env.DOCTOR_PASSWORD)
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
 
     const doctor = await Doctor.findOne({ doctorCode });
-    if (!doctor) return res.status(401).json({ success: false, message: "Invalid credentials." });
+    if (!doctor)
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
 
     res.status(200).json({ success: true, message: "Doctor login successful", doctor });
   } catch (error) {
     console.error("Doctor login error:", error);
-    res.status(500).json({ success: false, message: "Server error during doctor login." });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// -----------------------------
+// ----------------------
 // Get All Doctors
-// -----------------------------
-app.get("https://bcclweb.onrender.com/api/doctors", async (req, res) => {
+// ----------------------
+app.get("/api/doctors", async (req, res) => {
   try {
     const doctors = await Doctor.find({});
     res.status(200).json({ success: true, doctors });
   } catch (error) {
-    console.error("Error fetching doctors:", error);
-    res.status(500).json({ success: false, message: "Server error fetching doctors." });
+    console.error("Fetch doctors error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// -----------------------------
-// Appointment Create
-// -----------------------------
-app.post("https://bcclweb.onrender.com/api/appointments/create", async (req, res) => {
+// ----------------------
+// Create Appointment
+// ----------------------
+app.post("/api/appointments/create", async (req, res) => {
   try {
     const {
       employeeCode,
@@ -192,7 +191,7 @@ app.post("https://bcclweb.onrender.com/api/appointments/create", async (req, res
     } = req.body;
 
     if (!employeeCode || !patientName || !appointmentDate || !appointmentTime || !doctorCode) {
-      return res.status(400).json({ success: false, message: "Missing required fields for appointment." });
+      return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
     const dayStart = new Date(appointmentDate);
@@ -225,23 +224,23 @@ app.post("https://bcclweb.onrender.com/api/appointments/create", async (req, res
     });
 
     await newAppointment.save();
-    res.status(201).json({ success: true, message: "Appointment Created and Saved", appointment: newAppointment });
+
+    res.status(201).json({ success: true, message: "Appointment created", appointment: newAppointment });
   } catch (error) {
-    console.error("Error saving appointment:", error);
-    res.status(500).json({ success: false, message: "Server Error saving appointment" });
+    console.error("Appointment save error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// -----------------------------
-// Fetching Appointment (for Employee Dashboard)
-// -----------------------------
-app.get("https://bcclweb.onrender.com/api/appointments", async (req, res) => {
+// ----------------------
+// Get Employee Appointments
+// ----------------------
+app.get("/api/appointments", async (req, res) => {
   try {
     const { employeeCode, patientName } = req.query;
 
-    if (!employeeCode || !patientName) {
+    if (!employeeCode || !patientName)
       return res.status(400).json({ success: false, message: "Missing employeeCode or patientName" });
-    }
 
     const appointments = await Appointment.find({
       employeeCode: String(employeeCode).trim(),
@@ -250,81 +249,85 @@ app.get("https://bcclweb.onrender.com/api/appointments", async (req, res) => {
 
     res.status(200).json({ success: true, appointments });
   } catch (error) {
-    console.error("Error fetching employee appointments:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Fetch appointments error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// -----------------------------
-// Fetching Appointments for a specific Doctor
-// -----------------------------
-app.get("https://bcclweb.onrender.com/api/doctor/appointments/:doctorCode", async (req, res) => {
+// ----------------------
+// Get Doctor Appointments
+// ----------------------
+app.get("/api/doctor/appointments/:doctorCode", async (req, res) => {
   try {
     const { doctorCode } = req.params;
-    if (!doctorCode) return res.status(400).json({ success: false, message: "Doctor code is required." });
 
-    const appointments = await Appointment.find({ doctorCode: String(doctorCode).trim() }).sort({ appointmentDate: 1, appointmentTime: 1, tokenNumber: 1 });
+    const appointments = await Appointment.find({
+      doctorCode: String(doctorCode).trim(),
+    }).sort({ appointmentDate: 1, appointmentTime: 1, tokenNumber: 1 });
 
     res.status(200).json({ success: true, appointments });
   } catch (error) {
-    console.error("Error fetching doctor's appointments:", error);
-    res.status(500).json({ success: false, message: "Server error fetching doctor's appointments." });
+    console.error("Fetch doctor appts error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// -----------------------------
-// Update Appointment Status and/or Medical Report
-// -----------------------------
-app.patch("https://bcclweb.onrender.com/api/appointments/:id/update", async (req, res) => {
+// ----------------------
+// Update Appointment
+// ----------------------
+app.patch("/api/appointments/:id/update", async (req, res) => {
   try {
     const { id } = req.params;
     const { status, medicalReport } = req.body;
-
-    if (!status && medicalReport === undefined) {
-      return res.status(400).json({ success: false, message: "No update data provided (status or medical report)." });
-    }
 
     const updateFields = {};
     if (status) updateFields.status = status;
     if (medicalReport !== undefined) updateFields.medicalReport = medicalReport;
 
-    const appointment = await Appointment.findByIdAndUpdate(id, { $set: updateFields }, { new: true, runValidators: true });
+    const appointment = await Appointment.findByIdAndUpdate(
+      id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
 
-    if (!appointment) return res.status(404).json({ success: false, message: "Appointment not found." });
+    if (!appointment)
+      return res.status(404).json({ success: false, message: "Appointment not found" });
 
-    res.json({ success: true, message: "Appointment updated successfully.", appointment });
+    res.json({ success: true, appointment });
   } catch (error) {
-    console.error("Error updating appointment:", error);
-    res.status(500).json({ success: false, message: "Server error updating appointment." });
-  }
-});
-
-// -----------------------------
-// Delete appointment (only if cancelled)
-// -----------------------------
-app.delete("https://bcclweb.onrender.com/api/appointments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const appointment = await Appointment.findById(id);
-    if (!appointment) return res.status(404).json({ success: false, message: "Appointment not found" });
-
-    if (appointment.status !== "Cancelled") {
-      return res.status(403).json({ success: false, message: "Only cancelled appointments can be deleted." });
-    }
-
-    await Appointment.findByIdAndDelete(id);
-    res.json({ success: true, message: "Cancelled appointment deleted successfully." });
-  } catch (error) {
-    console.error("Error deleting appointment:", error);
+    console.error("Update appt error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// Global 404 for unknown API routes
+// ----------------------
+// Delete Appointment
+// ----------------------
+app.delete("/api/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment)
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+
+    if (appointment.status !== "Cancelled") {
+      return res.status(403).json({ success: false, message: "Only cancelled appointments can be deleted" });
+    }
+
+    await Appointment.findByIdAndDelete(id);
+
+    res.json({ success: true, message: "Appointment deleted" });
+  } catch (error) {
+    console.error("Delete appt error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 404 fallback
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
-// Start server
+// ----------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
