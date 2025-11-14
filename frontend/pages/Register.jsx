@@ -60,7 +60,7 @@ function Register() {
       dependents,
     };
     try {
-      const response = await fetch("http://localhost:9000/register", {
+      const response = await fetch("https://bcclweb.onrender.com/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(employeeData),
